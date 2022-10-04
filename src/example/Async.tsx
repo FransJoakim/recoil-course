@@ -1,27 +1,62 @@
 import {Container, Heading, Text} from '@chakra-ui/layout'
 import {Select} from '@chakra-ui/select'
 import {Suspense} from 'react'
-import {atom, selector, useRecoilState, useRecoilValue} from 'recoil'
+import {atom, atomFamily, selector, selectorFamily, useRecoilState, useRecoilValue, useSetRecoilState} from 'recoil'
+import {getWeather} from './fakeAPI'
 
 const userIdState = atom<number | undefined>({
     key: 'userId',
     default: undefined,
 })
 
-const userState = selector({
+const userState = selectorFamily({
     key: 'user',
-    get: async ({get}) => {
-        const userId = get(userIdState)
-        if (userId === undefined) return
-
+    get: (userId: number) => async () => {
         const userData = await fetch(`https://jsonplaceholder.typicode.com/users/${userId}`).then((data) => data.json())
         return userData
     },
 })
 
-const UserData = () => {
-    const user = useRecoilValue(userState)
+const weatherRequestIdState = atomFamily({
+    key: 'weatherRequestId',
+    default: 0,
+})
 
+const useRefetchWeather = (userId: number) => {
+    const setRequestId = useSetRecoilState(weatherRequestIdState(userId))
+    setRequestId((id) => id + 1)
+}
+
+const weatherState = selectorFamily({
+    key: 'weatherState',
+    get:
+        (userId: number) =>
+        async ({get}) => {
+            console.log(get(weatherRequestIdState(userId)))
+
+            const user = get(userState(userId))
+            const weather = await getWeather(user.address.city)
+            return weather
+        },
+})
+
+const UserWeather = ({userId}: {userId: number}) => {
+    const user = useRecoilValue(userState(userId))
+    const weatherAtLocation = useRecoilValue(weatherState(userId))
+    const refetch = useRefetchWeather(userId)
+    return (
+        <div>
+            <Text>
+                <b>Weather for {user.address.city}:</b> {weatherAtLocation}℃
+            </Text>
+            {/* @ts-ignore */}
+            <Text onClick={refetch}>Refetch weather</Text>
+        </div>
+    )
+}
+
+const UserData = ({userId}: {userId: number}) => {
+    const user = useRecoilValue(userState(userId))
     return (
         <div>
             <Heading as="h2" size="md" mb={1}>
@@ -33,6 +68,9 @@ const UserData = () => {
             <Text>
                 <b>Phone:</b> {user.phone}
             </Text>
+            <Suspense fallback={<div>Loading weather...</div>}>
+                <UserWeather userId={userId} />
+            </Suspense>
         </div>
     )
 }
@@ -61,7 +99,7 @@ export const Async = () => {
                 <option value="2">User 2</option>
                 <option value="3">User 3</option>
             </Select>
-            <Suspense fallback={<div>Loading...</div>}>{userId !== undefined && <UserData />}</Suspense>
+            <Suspense fallback={<div>Loading...</div>}>{userId !== undefined && <UserData userId={userId} />}</Suspense>
         </Container>
     )
 }
