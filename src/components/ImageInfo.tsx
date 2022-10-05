@@ -5,6 +5,7 @@ import {callApi} from '../api'
 import {selectedElementState} from '../Canvas'
 import {elementState} from './Rectangle/Rectangle'
 
+// this selector only extract image.id to make sure network-call is not done every time the element (its other properties) update
 const imageIdState = selector({
     key: 'imageId',
     get: ({get}) => {
@@ -28,7 +29,6 @@ const imageInfoState = selector({
 
 export const ImageInfo = () => {
     const imageInfo = useRecoilValue(imageInfoState)
-    console.log(imageInfo)
 
     return (
         <VStack spacing={2} alignItems="flex-start" width="100%">
