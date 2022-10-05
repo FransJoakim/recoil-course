@@ -1,11 +1,13 @@
 import {InputGroup, InputRightElement, NumberInput, NumberInputField, Text, VStack} from '@chakra-ui/react'
-import {selectorFamily, useRecoilState, useRecoilValue} from 'recoil'
+import {selector, selectorFamily, useRecoilState, useRecoilValue} from 'recoil'
 import {selectedElementState} from './Canvas'
 import {elementState} from './components/Rectangle/Rectangle'
 import _ from 'lodash'
 import produce from 'immer'
+import {ImageInfo, ImageLoading} from './components/ImageInfo'
+import {Suspense} from 'react'
 
-const editPropertyState = selectorFamily<number, {path: string; id: number}>({
+export const editPropertyState = selectorFamily<any, {path: string; id: number}>({
     key: 'editProperty',
     get:
         ({path, id}) =>
@@ -25,8 +27,20 @@ const editPropertyState = selectorFamily<number, {path: string; id: number}>({
         },
 })
 
+const hasImageState = selector({
+    key: 'hasImage',
+    get: ({get}) => {
+        const elementId = get(selectedElementState)
+        if (elementId == null) return
+
+        const element = get(elementState(elementId))
+        return element.image !== undefined
+    },
+})
+
 export const EditProperties = () => {
     const selectedElementId = useRecoilValue(selectedElementState)
+    const hasImage = useRecoilValue(hasImageState)
     if (selectedElementId == null) return null
 
     return (
@@ -39,6 +53,13 @@ export const EditProperties = () => {
                 <Property label="Width" path="style.size.width" id={selectedElementId} />
                 <Property label="Height" path="style.size.height" id={selectedElementId} />
             </Section>
+            {hasImage && (
+                <Section heading="Image">
+                    <Suspense fallback={<ImageLoading />}>
+                        <ImageInfo />
+                    </Suspense>
+                </Section>
+            )}
         </Card>
     )
 }

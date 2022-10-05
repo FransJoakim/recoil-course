@@ -5,9 +5,9 @@ import Canvas from './Canvas'
 import {ChakraProvider} from '@chakra-ui/react'
 import {BrowserRouter as Router, Route, Switch} from 'react-router-dom'
 import {RecoilRoot} from 'recoil'
-import {Atom} from './example/Atom'
-import {Selectors} from './example/Selectors'
-import {Async} from './example/Async'
+import {Atom} from './examples/Atom'
+import {Selectors} from './examples/Selectors'
+import {Async} from './examples/Async'
 
 ReactDOM.render(
     <React.StrictMode>
@@ -15,13 +15,13 @@ ReactDOM.render(
             <ChakraProvider>
                 <Router>
                     <Switch>
-                        <Route path="/example/atoms">
+                        <Route path="/examples/atoms">
                             <Atom />
                         </Route>
-                        <Route path="/example/selectors">
+                        <Route path="/examples/selectors">
                             <Selectors />
                         </Route>
-                        <Route path="/example/async">
+                        <Route path="/examples/async">
                             <Suspense fallback={<div>Loading...</div>}>
                                 <Async />
                             </Suspense>
