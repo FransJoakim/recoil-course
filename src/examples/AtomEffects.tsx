@@ -4,7 +4,6 @@ import {Box, Divider, Heading, VStack} from '@chakra-ui/layout'
 import React, {useState} from 'react'
 import {
     atom,
-    AtomEffect,
     atomFamily,
     DefaultValue,
     useRecoilCallback,
@@ -12,37 +11,63 @@ import {
     useRecoilValue,
     useResetRecoilState,
 } from 'recoil'
+import {shoppingListAPI} from './fakeAPI'
 
 type ItemType = {
     label: string
     checked: boolean
 }
 
-const persistDataInLocalStorage: AtomEffect<any> = ({setSelf, onSet, node}) => {
-    const savedItems = localStorage.getItem(node.key)
-    if (savedItems != null) {
-        setSelf(JSON.parse(savedItems))
+class CashedAPI {
+    cashedItems: Record<number, ItemType> | undefined
+
+    private async getItems() {
+        if (!this.cashedItems) {
+            this.cashedItems = await shoppingListAPI.getItems()
+        }
+        return this.cashedItems
     }
 
-    onSet((newItems) => {
-        if (newItems instanceof DefaultValue) {
-            localStorage.removeItem(node.key)
-        } else {
-            localStorage.setItem(node.key, JSON.stringify(newItems))
-        }
-    })
+    async getIds() {
+        const items = await this.getItems()
+        return Object.keys(items).map((id) => parseInt(id))
+    }
+
+    async getItem(id: number) {
+        const items = await this.getItems()
+        if (items[id] === undefined) return new DefaultValue()
+        return items[id]
+    }
 }
+
+const cashedAPI = new CashedAPI()
 
 const idsState = atom<number[]>({
     key: 'ids',
     default: [],
-    effects: [persistDataInLocalStorage],
+    effects: [({setSelf}) => setSelf(cashedAPI.getIds())],
 })
 
 const itemState = atomFamily<ItemType, number>({
     key: 'item',
     default: {label: '', checked: false},
-    effects: [persistDataInLocalStorage],
+    effects: (id) => [
+        ({onSet, setSelf, trigger}) => {
+            setSelf(cashedAPI.getItem(id))
+
+            onSet((item, oldItem) => {
+                // This next line seems redundant in stable version (the course utelized 'effects_UNSTABLE')
+                // No network call was triggered by the 'createOrUpdateItem' (line 66) after setSelf initialized the atom with data from API regardless of whether line 61 is included
+                if (oldItem instanceof DefaultValue && trigger === 'get') return
+
+                if (item instanceof DefaultValue) {
+                    shoppingListAPI.deleteItem(id)
+                } else {
+                    shoppingListAPI.createOrUpdateItem(id, item)
+                }
+            })
+        },
+    ],
 })
 
 export const AtomEffects = () => {
